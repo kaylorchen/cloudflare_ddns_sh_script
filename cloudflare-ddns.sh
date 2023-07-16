@@ -13,15 +13,15 @@ export PATH
 SelectAT="1"
 
 # CloudFlare API " X-Auth-Email: *** " " X-Auth-Key: *** "
-XAUTHEMAIL="e-mail"
-XAUTHKEY="api_key"
+XAUTHEMAIL="kaylor.chen@qq.com"
+XAUTHKEY="11111111111111111"
 
 # CloudFlare Token " Authorization: Bearer *** "
 AuthorizationToken="YOURTOKEN"
 
 # Domain Name " example.com " " ddns.example.com "
-ZONENAME="example.com"
-DOMAINNAME="ddns.example.com"
+ZONENAME="kaylordut.com"
+DOMAINNAME="test.kaylordut.com"
 DOMAINTTL="1"
 
 # Output
@@ -60,7 +60,7 @@ get_domain_ip() {
     if [ "${SelectAT}" = 1 ]; then DOMAINIPADDLOG=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONERECORDS}/dns_records/${DNSRECORDS}" -H "X-Auth-Email: ${XAUTHEMAIL}" -H "X-Auth-Key: ${XAUTHKEY}" -H "Content-Type: application/json" --connect-timeout 30 -m 10 ); fi
     if [ "${SelectAT}" = 2 ]; then DOMAINIPADDLOG=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONERECORDS}/dns_records/${DNSRECORDS}" -H "Authorization: Bearer ${AuthorizationToken}" -H "Content-Type: application/json" --connect-timeout 30 -m 10 ); fi
     #DOMAINIPADD=$(echo "${DOMAINIPADDLOG}" | awk BEGIN{RS=EOF}'{gsub(/\n/," ");print}' | sed 's/ //g' | grep -o '(?<="content":")[^"]*' | head -1 )
-    DOMAINIPADD=$(echo "${DOMAINIPADDLOG}" | grep content | awk -F "\"" '{print $4}' )
+    DOMAINIPADD=$(echo "${DOMAINIPADDLOG}" | awk -F "content\":\"" '{print $2}' | awk -F "\"" '{print $1}' )
     if [ ! "${DOMAINIPADD}" ]; then echo "Failed to get DNS resolution address from cloudflare." >> "${OUTPUTLOG}"; echo "---log---" >> "${OUTPUTLOG}" ; echo "${DOMAINIPADDLOG}" >> "${OUTPUTLOG}" ; echo "---log---" >> "${OUTPUTLOG}" ; exit 1; fi
 }
 
@@ -72,11 +72,7 @@ update_new_ipaddress() {
 }
 
 get_server_new_ip() {
-    [ -z "${NEWIPADD}" ] && NEWIPADD=$( wget -qO- -t1 -T2 https://ipv4.icanhazip.com )
-    [ -z "${NEWIPADD}" ] && NEWIPADD=$( wget -qO- -t1 -T2 https://api.ipify.org )
-    [ -z "${NEWIPADD}" ] && NEWIPADD=$( wget -qO- -t1 -T2 ipv4.icanhazip.com )
-    [ -z "${NEWIPADD}" ] && NEWIPADD=$( wget -qO- -t1 -T2 api.ipify.org )
-    [ -z "${NEWIPADD}" ] && NEWIPADD=$( wget -qO- -t1 -T2 ipinfo.io/ip )
+    [ -z "${NEWIPADD}" ] && NEWIPADD=$( ifconfig pppoe-wan | grep 'inet addr' | awk -F ' ' '{print $2}' | awk -F ':' '{print $2}')
     if [[ ! "${NEWIPADD}" ]]; then echo "Failed to get server public network address from internet." >> "${OUTPUTLOG}"; exit 1; fi
 }
 
@@ -116,6 +112,7 @@ main() {
     else
         make_ddns_info_file
     fi
+    echo "new IP is ${NEWIPADD} and domain is ${DOMAINIPADD}." >> "${OUTPUTLOG}"
     if [[ "${NEWIPADD}" == "${DOMAINIPADD}" ]]; then
         echo "IP address has not changed." >> "${OUTPUTLOG}"
         exit 0
